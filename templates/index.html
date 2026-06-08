@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SESAME Data Collector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Upload card ── */
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .drop-zone {
+      border: 2px dashed #3b4263;
+      border-radius: 8px;
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #6366f1;
+      background: #1a1d2e;
+    }
+
+    .drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    .drop-zone p { color: #94a3b8; font-size: 0.9rem; }
+
+    .drop-zone .filename {
+      margin-top: 0.5rem;
+      color: #6366f1;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    #file-input { display: none; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4f46e5; }
+
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #059669; }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      margin-top: 0.75rem;
+      display: none;
+    }
+
+    .progress-label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 0.3rem;
+    }
+
+    .progress-bar-bg {
+      background: #2d3148;
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #6366f1;
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Log ── */
+    #log {
+      background: #0d0f1a;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 1rem;
+      height: 280px;
+      overflow-y: auto;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .log-info  { color: #94a3b8; }
+    .log-warn  { color: #f59e0b; }
+    .log-error { color: #f87171; }
+    .log-ok    { color: #34d399; }
+
+    /* ── Results table ── */
+    #results-section { display: none; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid #2d3148;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    thead th {
+      background: #1a1d2e;
+      color: #94a3b8;
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid #2d3148;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tbody tr:nth-child(even) { background: #181b2a; }
+    tbody tr:hover { background: #1e2235; }
+
+    tbody td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #1e2235;
+      color: #cbd5e1;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .badge-yes { background: #064e3b; color: #34d399; }
+    .badge-no  { background: #1f2937; color: #9ca3af; }
+    .badge-unk { background: #1e1b4b; color: #818cf8; }
+
+    /* ── Status pill ── */
+    #status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .pill-idle    { background: #1e2130; color: #64748b; border: 1px solid #2d3148; }
+    .pill-running { background: #1e1b4b; color: #818cf8; border: 1px solid #4338ca; }
+    .pill-done    { background: #064e3b; color: #34d399; border: 1px solid #065f46; }
+    .pill-error   { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+
+    .spinner {
+      width: 10px; height: 10px;
+      border: 2px solid #818cf8;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── Manual entry ── */
+    .manual-entry {
+      border: 1px solid #3b4263;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #181b2a;
+    }
+
+    .manual-entry .url-label {
+      font-size: 0.78rem;
+      color: #6366f1;
+      font-family: "SF Mono", "Fira Code", monospace;
+      margin-bottom: 0.5rem;
+      word-break: break-all;
+    }
+
+    .manual-entry label {
+      display: block;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 0.3rem;
+    }
+
+    .manual-entry input[type="text"] {
+      width: 100%;
+      background: #0d0f1a;
+      border: 1px solid #2d3148;
+      border-radius: 6px;
+      color: #e2e8f0;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .manual-entry textarea {
+      width: 100%;
+      height: 140px;
+      background: #0d0f1a;
+      border: 1px solid #2d3148;
+      border-radius: 6px;
+      color: #e2e8f0;
+      padding: 0.6rem;
+      font-size: 0.8rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      resize: vertical;
+      margin-bottom: 0.5rem;
+    }
+
+    .manual-entry textarea:focus,
+    .manual-entry input:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .manual-entry .entry-status {
+      font-size: 0.8rem;
+      margin-top: 0.4rem;
+      min-height: 1.2em;
+    }
+
+    .btn-sm {
+      padding: 0.4rem 1rem;
+      font-size: 0.82rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <h1>🔍 SESAME Data Collector</h1>
+  <p class="subtitle">Upload a CSV of article URLs to extract structured misconduct data.</p>
+
+  <!-- Status pill -->
+  <div id="status-pill" class="pill-idle">
+    <span id="status-dot">●</span>
+    <span id="status-text">Idle</span>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card">
+    <h2>1 · Upload CSV</h2>
+
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="icon">📄</div>
+      <p>Drag & drop your <strong>urls.csv</strong> here, or click to browse</p>
+      <p style="font-size:0.75rem; margin-top:0.4rem; color:#64748b;">
+        CSV must have a single column named <code>url</code>
+      </p>
+      <div class="filename" id="filename-display"></div>
+    </div>
+    <input type="file" id="file-input" accept=".csv" />
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="run-btn" disabled onclick="startJob()">
+        ▶ Run Pipeline
+      </button>
+      <button class="btn btn-success" id="download-btn" style="display:none" onclick="downloadResults()">
+        ⬇ Download Results CSV
+      </button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-label" id="progress-label">Processing…</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log card -->
+  <div class="card" id="log-card" style="display:none">
+    <h2>2 · Live Log</h2>
+    <div id="log"></div>
+  </div>
+
+  <!-- Manual entry card (shown when URLs fail to fetch) -->
+  <div class="card" id="manual-section" style="display:none">
+    <h2>⚠ Manual Entry — Failed URLs</h2>
+    <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:1rem;">
+      The following URLs could not be fetched automatically. Paste the article text below and click <strong>Process</strong> to extract the data.
+    </p>
+    <div id="manual-entries"></div>
+  </div>
+
+  <!-- Results card -->
+  <div class="card" id="results-section">
+    <h2>3 · Results Preview</h2>
+    <p style="color:#64748b; font-size:0.8rem; margin-bottom:0.75rem;">
+      Showing all columns except <em>notes</em>. Use the download button to get the full CSV.
+    </p>
+    <div class="table-wrap">
+      <table id="results-table">
+        <thead id="results-thead"></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+  let selectedFile = null;
+  let eventSource = null;
+
+  // ── File selection ──────────────────────────────────────────────────────
+  const fileInput = document.getElementById("file-input");
+  const dropZone  = document.getElementById("drop-zone");
+  const runBtn    = document.getElementById("run-btn");
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) selectFile(fileInput.files[0]);
+  });
+
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+  });
+
+  function selectFile(file) {
+    if (!file.name.endsWith(".csv")) {
+      alert("Please select a .csv file.");
+      return;
+    }
+    selectedFile = file;
+    document.getElementById("filename-display").textContent = "✓ " + file.name;
+    runBtn.disabled = false;
+  }
+
+  // ── Start job ───────────────────────────────────────────────────────────
+  function startJob() {
+    if (!selectedFile) return;
+
+    // Reset UI
+    clearLog();
+    document.getElementById("results-section").style.display = "none";
+    document.getElementById("download-btn").style.display = "none";
+    document.getElementById("log-card").style.display = "block";
+    document.getElementById("log").style.display = "block";
+    document.getElementById("progress-wrap").style.display = "block";
+    runBtn.disabled = true;
+    setStatus("running", "Running…");
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    fetch("/upload", { method: "POST", body: formData })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          setStatus("error", "Error");
+          appendLog("❌ " + data.error, "error");
+          runBtn.disabled = false;
+          return;
+        }
+        // Start listening to the SSE stream
+        startStream();
+      })
+      .catch(err => {
+        setStatus("error", "Error");
+        appendLog("❌ Upload failed: " + err, "error");
+        runBtn.disabled = false;
+      });
+  }
+
+  // ── SSE stream ──────────────────────────────────────────────────────────
+  function startStream() {
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource("/stream");
+
+    eventSource.onmessage = e => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === "log") {
+        const cls = msg.level === "error" ? "log-error"
+                  : msg.level === "warn"  ? "log-warn"
+                  : msg.message.startsWith("✓") ? "log-ok"
+                  : "log-info";
+        appendLog(msg.message, cls);
+      }
+
+      if (msg.type === "progress") {
+        const pct = msg.total > 0 ? Math.round((msg.current / msg.total) * 100) : 0;
+        document.getElementById("progress-bar").style.width = pct + "%";
+        document.getElementById("progress-label").textContent =
+          `${msg.label}: ${msg.current}/${msg.total} (${pct}%)`;
+      }
+
+      if (msg.type === "done") {
+        eventSource.close();
+        runBtn.disabled = false;
+
+        if (msg.success) {
+          setStatus("done", `Done — ${msg.count} record(s)`);
+          document.getElementById("progress-bar").style.width = "100%";
+          document.getElementById("download-btn").style.display = "inline-flex";
+          if (msg.rows && msg.rows.length > 0) {
+            renderTable(msg.columns, msg.rows);
+          }
+          if (msg.failed_urls && msg.failed_urls.length > 0) {
+            showManualEntries(msg.failed_urls);
+          }
+        } else {
+          setStatus("error", "Failed");
+          if (msg.failed_urls && msg.failed_urls.length > 0) {
+            showManualEntries(msg.failed_urls);
+          }
+        }
+      }
+    };
+
+    eventSource.onerror = () => {
+      appendLog("⚠ Connection to server lost.", "warn");
+      eventSource.close();
+      runBtn.disabled = false;
+    };
+  }
+
+  // ── Table rendering ─────────────────────────────────────────────────────
+  function renderTable(columns, rows) {
+    const thead = document.getElementById("results-thead");
+    const tbody = document.getElementById("results-tbody");
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    const headerRow = document.createElement("tr");
+    columns.forEach(col => {
+      const th = document.createElement("th");
+      th.textContent = col.replace(/_/g, " ");
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+
+    rows.forEach(row => {
+      const tr = document.createElement("tr");
+      columns.forEach(col => {
+        const td = document.createElement("td");
+        const val = row[col] ?? "";
+        if (col === "teacher_coach_of_year" || col === "convicted") {
+          const badge = document.createElement("span");
+          badge.className = val === "yes" ? "badge badge-yes"
+                          : val === "no"  ? "badge badge-no"
+                          : "badge badge-unk";
+          badge.textContent = val;
+          td.appendChild(badge);
+        } else {
+          td.textContent = val === -1 ? "—" : val;
+          td.title = String(val);
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("results-section").style.display = "block";
+    document.getElementById("results-section").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function appendLog(msg, cls = "log-info") {
+    const log = document.getElementById("log");
+    const line = document.createElement("div");
+    line.className = cls;
+    line.textContent = msg;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById("log").innerHTML = "";
+  }
+
+  function setStatus(state, text) {
+    const pill = document.getElementById("status-pill");
+    const dot  = document.getElementById("status-dot");
+    const txt  = document.getElementById("status-text");
+    pill.className = "pill-" + state;
+    txt.textContent = text;
+    if (state === "running") {
+      dot.outerHTML = '<span class="spinner" id="status-dot"></span>';
+    } else {
+      const spinner = document.getElementById("status-dot");
+      if (spinner) spinner.outerHTML = '<span id="status-dot">●</span>';
+    }
+  }
+
+  // ── Manual entry ────────────────────────────────────────────────────────
+  function showManualEntries(failedUrls) {
+    if (!failedUrls || failedUrls.length === 0) return;
+    const section = document.getElementById("manual-section");
+    const container = document.getElementById("manual-entries");
+    container.innerHTML = "";
+
+    failedUrls.forEach((url, idx) => {
+      const id = `manual-${idx}`;
+      const div = document.createElement("div");
+      div.className = "manual-entry";
+      div.id = id;
+      div.innerHTML = `
+        <div class="url-label">🔗 ${url}</div>
+        <label for="${id}-date">Article date (M/DD/YYYY) — optional</label>
+        <input type="text" id="${id}-date" placeholder="e.g. 5/07/2026" />
+        <label for="${id}-text">Paste article text here</label>
+        <textarea id="${id}-text" placeholder="Paste the full article text…"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="processManual('${url}', '${id}')">
+            ▶ Process
+          </button>
+        </div>
+        <div class="entry-status" id="${id}-status"></div>
+      `;
+      container.appendChild(div);
+    });
+
+    section.style.display = "block";
+    section.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function processManual(url, id) {
+    const text = document.getElementById(`${id}-text`).value.trim();
+    const date = document.getElementById(`${id}-date`).value.trim();
+    const statusEl = document.getElementById(`${id}-status`);
+
+    if (!text) {
+      statusEl.style.color = "#f87171";
+      statusEl.textContent = "⚠ Please paste the article text first.";
+      return;
+    }
+
+    statusEl.style.color = "#818cf8";
+    statusEl.textContent = "⏳ Processing…";
+
+    // Disable the button while running
+    const btn = document.querySelector(`#${id} .btn`);
+    if (btn) btn.disabled = true;
+
+    fetch("/process_manual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, article_text: text, article_date: date }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (btn) btn.disabled = false;
+        if (data.error) {
+          statusEl.style.color = "#f87171";
+          statusEl.textContent = "❌ Error: " + data.error;
+          return;
+        }
+        statusEl.style.color = "#34d399";
+        statusEl.textContent = "✓ Processed and added to results.";
+
+        // Append the new row to the results table if it's visible
+        const tbody = document.getElementById("results-tbody");
+        const thead = document.getElementById("results-thead");
+        if (tbody && thead.children.length > 0) {
+          const columns = data.columns;
+          const row = data.row;
+          const tr = document.createElement("tr");
+          columns.forEach(col => {
+            const td = document.createElement("td");
+            const val = row[col] ?? "";
+            if (col === "teacher_coach_of_year" || col === "convicted") {
+              const badge = document.createElement("span");
+              badge.className = val === "yes" ? "badge badge-yes"
+                              : val === "no"  ? "badge badge-no"
+                              : "badge badge-unk";
+              badge.textContent = val;
+              td.appendChild(badge);
+            } else {
+              td.textContent = val === -1 ? "—" : val;
+              td.title = String(val);
+            }
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+          document.getElementById("results-section").style.display = "block";
+          document.getElementById("download-btn").style.display = "inline-flex";
+        }
+      })
+      .catch(err => {
+        if (btn) btn.disabled = false;
+        statusEl.style.color = "#f87171";
+        statusEl.textContent = "❌ Request failed: " + err;
+      });
+  }
+
+  function downloadResults() {
+    window.location.href = "/download";
+  }
+</script>
+</body>
+</html>
