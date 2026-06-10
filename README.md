@@ -1,74 +1,43 @@
-# Generative AI Introduction
+# SESAME Data Collector
 
-Thanks for your interest in this material. Here are a few notebooks used to teach business students the basic fundamentals of Generative AI.  If you have any comments or questions or would like to collaborate please send me an email.
+An automated data extraction pipeline for the SESAME (Stop Educator Sexual Abuse, Misconduct, and Exploitation) database. Given a CSV of news article URLs, the tool extracts structured misconduct data fields and outputs a clean CSV ready for database ingestion.
 
-- Darren Kraker - dkraker@calpoly.edu
+## What It Does
 
-**This document:**
+The pipeline processes each article URL through four steps:
 
-# Disclaimers
+1. Fetches the article text and publication date
+2. Uses Claude Sonnet 4.5 (via AWS Bedrock) to extract structured fields — offender name, age, gender, role, arrest date, conviction status, victim information, and more
+3. Looks up the normalized school district name, city, state, and ZIP from local NCES data files
+4. Searches the web for Teacher/Coach of the Year recognition
 
-**Customers are responsible for making their own independent assessment of the information in this document.**
+The output is a 20-column CSV with one row per article.
 
-**This document:**
+## How to Use
 
+### Requirements
 
-Customers are responsible for making their own independent assessment of the information in this document. 
+- Python 3.10+
+- AWS credentials with Bedrock access
+- NCES data files (`ccd_school_districts.csv` and `ccd_public_schools.csv`) placed in the project root
 
-This document: 
+### Setup
 
-(a) is for informational purposes only, 
+```bash
+pip install -r requirements.txt
+cp .env.example .env  # fill in your AWS credentials
+```
 
-(b) references AWS product offerings and practices, which are subject to change without notice, 
+### Web App
 
-(c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. The responsibilities and liabilities of AWS to its customers are controlled by AWS agreements, and this document is not part of, nor does it modify, any agreement between AWS and its customers, and 
+```bash
+python app.py
+```
 
-(d) is not to be considered a recommendation or viewpoint of AWS. 
+Open **http://localhost:5001** in your browser. Upload a CSV with a `url` column, click Run Pipeline, and download the results when complete. If any articles fail to fetch, you can paste the article text manually to process them.
 
-Additionally, you are solely responsible for testing, security and optimizing all code and assets on GitHub repo, and all such code and assets should be considered: 
+### Command Line
 
-(a) as-is and without warranties or representations of any kind, 
-
-(b) not suitable for production environments, or on production or other critical data, and 
-
-(c) to include shortcuts in order to support rapid prototyping such as, but not limited to, relaxed authentication and authorization and a lack of strict adherence to security best practices. 
-
-All work produced is open source. More information can be found in the GitHub repo. 
-
-
-## Table of Contents
-
-- [Collaboration](#collaboration)
-- [Disclaimers](#disclaimers)
-- [Authors](#authors)
-- [Overview](#overview)
-- [Environment Step](environment-step)
-- [Set Required AWS Permissions](set-required-aws-permissions)
-- [Make sure you have access to Bedrock Models](make-sure-you-havea-ccess-to-bedrock-models)
-
-
-## Overview
-
-- This course was developed to teach Masters Students in the College of Business some techniques that are useful in building Generative AI Applications.  The course was conducted using an AWS account and primary relied on SageMaker AI Studio for students to access.  These notebooks should work in an standard ML Notebook Instance.  If you're interested in automation scripts to build out an SageMaker Studio environment please reach out and I'd be happy to share that code as well.
-
-### Environment Step
-
-- Deploy a SageMaker Instance Notebook
-- git clone https://github.com/cal-poly-dxhub/generative-ai-learning.git
-- Setup Aurora PostgreSQL qith PgVector
-
-###  Set Required AWS Permissions
-Ensure the Sagemaker Policy has access to:
-- AmazonBedrockFullAccess
-- AmazonS3FullAccess
-
-### Make sure you have access to Bedrock Models
-- Titan Text Embeddings V2 
-- Cohere Embed English (cohere.embed-english-v3)
-- Claude Sonnet 3 (anthropic.claude-3-sonnet-20240229-v1:0_
-
-For any queries or issues, please contact:
-
-- Darren Kraker - dkraker@calpoly.edu
-- Nick Osterbur - nosterbu@calpoly.edu
-
+```bash
+python run_workflow.py --input data/urls.csv --output-dir data/
+```
