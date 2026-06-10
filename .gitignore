@@ -10,8 +10,6 @@ venv/
 *.egg-info/
 
 # Data files — large CSVs and results
-ccd_public_schools.csv
-ccd_school_districts.csv
 data/results*.csv
 data/uploaded_urls.csv
 
